@@ -1,0 +1,18 @@
+name = "torb-caserta"
+compatibility_date = "2024-01-01"
+
+# Cloudflare Pages - nessun main entry point necessario
+# Le Functions sono in /functions/
+
+[[d1_databases]]
+binding = "DB"
+database_name = "torb-db"
+database_id = "d259e0b1-8d8a-4f1d-9a63-54d1ba6c8d12"
+
+# Variabili d'ambiente (aggiungere anche nel pannello Cloudflare Pages)
+# ADMIN_TOKEN_SECRET = "stringa random di 64 caratteri"
+# SUMUP_SECRET_KEY = "già configurato"
+# SUMUP_EMAIL = "già configurato"
+# USE_SUPABASE = "false" (impostare "true" per usare Supabase come fallback)
+# SUPABASE_URL = "" (URL del progetto Supabase)
+# SUPABASE_KEY = "" (chiave anon/service di Supabase)
