@@ -283,6 +283,25 @@
         <button class="btn-checkout" onclick="openRecap()">Carrello &nbsp;<i class="fa-solid fa-basket-shopping"></i></button>
     </div>
 
+    <!-- MODAL SCELTA OBBLIGATORIA -->
+    <div class="checkout-modal" id="mandatory-modal" onclick="if(event.target === this) closeMandatoryModal()">
+        <div class="checkout-content">
+            <div class="modal-header">
+                <h3 id="mandatory-title">Scegli un'opzione</h3>
+                <i class="fa-solid fa-xmark close-modal" onclick="closeMandatoryModal()"></i>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:0.85rem; color:var(--text-muted); font-weight:500; margin-bottom:16px;">Seleziona obbligatoriamente una delle opzioni disponibili.</p>
+                <div id="mandatory-options-list"></div>
+            </div>
+            <div style="padding: 20px; border-top: 1px solid var(--border-light); background: #fafafa;">
+                <button class="btn-confirm-order" onclick="confirmMandatoryChoice()" id="btn-mandatory-confirm">
+                    <i class="fa-solid fa-check"></i> Aggiungi al Carrello
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="checkout-modal" id="custom-modal" onclick="if(event.target === this) closeCustomModal()">
         <div class="checkout-content">
             <div class="modal-header">
@@ -666,7 +685,15 @@
             });
         }
 
-        function handleAddClick(id) { updateQty(id, 1); }
+        function handleAddClick(id) {
+            const item = itemMap[id];
+            // Se scelta obbligatoria e ha opzioni configurate, apri la modale
+            if (item && item.mandatory_choice && item.options && item.options.length > 0) {
+                openMandatoryModal(id);
+            } else {
+                updateQty(id, 1);
+            }
+        }
         function handleRemoveClick(id) {
             let baseCount = cart[id] || 0;
             let variants = Object.keys(cart).filter(k => k.startsWith('c_' + id + '_') && cart[k] > 0);
@@ -1038,6 +1065,86 @@
             } finally {
                 skeleton.style.display = 'none';
             }
+        }
+
+        // ============================================================
+        // MODALE SCELTA OBBLIGATORIA
+        // ============================================================
+        let mandatoryPendingId = null;
+        let mandatorySelectedOption = null;
+
+        function openMandatoryModal(itemId) {
+            const item = itemMap[itemId];
+            mandatoryPendingId = itemId;
+            mandatorySelectedOption = null;
+
+            document.getElementById('mandatory-title').innerText = item.name;
+
+            const list = document.getElementById('mandatory-options-list');
+            list.innerHTML = item.options.map((opt, i) => `
+                <label class="custom-option-card" onclick="selectMandatoryOption(${opt.id}, '${opt.label.replace(/'/g,"\\'")}', this)">
+                    <div class="custom-option-left">
+                        <input type="radio" name="mandatory-opt" value="${opt.id}" id="mopt-${opt.id}">
+                        ${opt.label}
+                    </div>
+                </label>`).join('');
+
+            document.getElementById('mandatory-modal').classList.add('active');
+        }
+
+        function selectMandatoryOption(optId, optLabel, el) {
+            // Deseleziona tutti
+            document.querySelectorAll('#mandatory-options-list .custom-option-card').forEach(c => {
+                c.style.borderColor = '';
+                c.style.background = '';
+            });
+            // Seleziona questo
+            el.style.borderColor = 'var(--accent-gold)';
+            el.style.background = 'rgba(184,134,11,0.06)';
+            document.getElementById('mopt-' + optId).checked = true;
+            mandatorySelectedOption = { id: optId, label: optLabel };
+        }
+
+        function closeMandatoryModal() {
+            document.getElementById('mandatory-modal').classList.remove('active');
+            mandatoryPendingId = null;
+            mandatorySelectedOption = null;
+        }
+
+        function confirmMandatoryChoice() {
+            if (!mandatorySelectedOption) {
+                alert('Seleziona un\'opzione per continuare.');
+                return;
+            }
+            const item = itemMap[mandatoryPendingId];
+
+            // Crea variante con l'opzione scelta
+            const cId = 'c_' + item.id + '_opt' + mandatorySelectedOption.id;
+            if (!itemMap[cId]) {
+                itemMap[cId] = {
+                    id: cId,
+                    baseId: item.id,
+                    name: item.name,
+                    price: item.price,
+                    isCustom: true,
+                    removed: [],
+                    chosenOption: mandatorySelectedOption.label
+                };
+                let h = `<div class="variant-item" id="variant-${cId}">
+                    <div class="variant-header">
+                        <span>+ ${mandatorySelectedOption.label}</span>
+                        <div style="display:flex;gap:10px;">
+                            <button class="btn-control" onclick="updateQty('${cId}',-1)"><i class="fa-solid fa-minus"></i></button>
+                            <span class="qty" id="qty-${cId}">0</span>
+                            <button class="btn-control" onclick="updateQty('${cId}',1)"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="variant-desc" style="color:var(--accent-gold);">Scelta: ${mandatorySelectedOption.label}</div>
+                </div>`;
+                document.getElementById('variants-' + item.id).insertAdjacentHTML('beforeend', h);
+            }
+            updateQty(cId, 1);
+            closeMandatoryModal();
         }
 
         async function initAppAsync() {

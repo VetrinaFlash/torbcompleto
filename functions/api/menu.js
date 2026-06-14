@@ -23,6 +23,22 @@ export async function onRequestGet(context) {
        FROM products WHERE active = 1 ORDER BY sort_order ASC`
     ).all();
 
+    // Legge tutte le opzioni (per i prodotti con scelta obbligatoria)
+    const opts = await env.DB.prepare(
+      `SELECT po.id, po.product_id, po.label
+       FROM product_options po
+       INNER JOIN products p ON p.id = po.product_id
+       WHERE p.active = 1
+       ORDER BY po.sort_order ASC, po.id ASC`
+    ).all();
+
+    // Raggruppa opzioni per product_id
+    const optsByProduct = {};
+    opts.results.forEach(o => {
+      if (!optsByProduct[o.product_id]) optsByProduct[o.product_id] = [];
+      optsByProduct[o.product_id].push({ id: o.id, label: o.label });
+    });
+
     // Mappa prodotti per categoria
     const prodsByCategory = {};
     prods.results.forEach(p => {
@@ -33,7 +49,8 @@ export async function onRequestGet(context) {
         desc: p.description || '',
         price: p.price,
         image_url: p.image_url || '',
-        mandatory_choice: p.mandatory_choice === 1
+        mandatory_choice: p.mandatory_choice === 1,
+        options: optsByProduct[p.id] || []
       });
     });
 

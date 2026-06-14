@@ -60,6 +60,25 @@
         .notif-badge { display: inline-flex; align-items: center; gap: 8px; }
         .new-order-dot { width: 10px; height: 10px; background: var(--red); border-radius: 50%; display: none; animation: pulse 1.2s infinite; }
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+
+        /* BANNER NUOVO ORDINE */
+        #new-order-banner {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+            background: var(--red);
+            color: #fff;
+            padding: 14px 24px;
+            font-weight: 900;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(211,47,47,0.6);
+            animation: slideDown 0.4s ease-out;
+            cursor: pointer;
+        }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        #new-order-banner .banner-close { float: right; cursor: pointer; opacity: 0.8; font-size: 1.2rem; margin-left: 16px; }
         .content { padding: 28px; flex: 1; }
 
         /* SEZIONI */
@@ -184,20 +203,79 @@
         .sidebar-toggle { display: none; background: none; border: none; color: var(--text); font-size: 1.3rem; cursor: pointer; }
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 150; }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
+            /* Layout base */
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
             .sidebar-overlay.show { display: block; }
             .main { margin-left: 0; }
             .sidebar-toggle { display: block; }
-            .content { padding: 16px; }
-            .kpi-grid { grid-template-columns: 1fr 1fr; }
+            .content { padding: 14px 12px; }
+            .topbar { padding: 0 14px; }
+
+            /* KPI grid: 2 colonne su mobile */
+            .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .kpi-value { font-size: 1.4rem; }
+
+            /* Dashboard due colonne → una sola */
+            .dash-two-col { grid-template-columns: 1fr !important; }
+
+            /* Chart altezza ridotta */
+            .chart-wrap { height: 180px !important; }
+
+            /* Tabelle: scroll orizzontale + font piccolo */
+            .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { font-size: 0.78rem; min-width: 520px; }
+            td, th { padding: 9px 10px; }
+
+            /* Filtri: stack verticale */
+            .filters-row { flex-direction: column; align-items: stretch; }
+            .filter-input, .btn { width: 100%; justify-content: center; }
+            .table-header { flex-direction: column; align-items: stretch; gap: 12px; }
+
+            /* Menu admin: una sola colonna */
             .menu-layout { grid-template-columns: 1fr; }
-            .topbar { padding: 0 16px; }
+
+            /* Modal: larghezza piena */
+            .modal-box { max-width: 100%; margin: 0; border-radius: 12px 12px 0 0; align-self: flex-end; }
+            .modal-overlay { align-items: flex-end; padding: 0; }
+
+            /* Prod grid: 1 colonna */
+            .prod-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+            /* Banner ordine: font più piccolo */
+            #new-order-banner { font-size: 0.82rem; padding: 12px 14px; }
+
+            /* Settings: padding ridotto */
+            .settings-section { padding: 16px; }
+
+            /* Paginazione */
+            .pagination { flex-wrap: wrap; gap: 8px; }
+
+            /* Topbar date: nascondi su schermi piccoli */
+            #topbar-date { display: none; }
+
+            /* Bottone notifiche */
+            #btn-enable-notif { font-size: 0.65rem; padding: 4px 8px; }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-grid { grid-template-columns: 1fr 1fr; }
+            .kpi-card { padding: 14px 12px; }
+            .kpi-value { font-size: 1.2rem; }
+            .prod-grid { grid-template-columns: 1fr; }
+            .topbar-title { font-size: 0.9rem; }
         }
     </style>
 </head>
 <body>
+
+<!-- BANNER NUOVO ORDINE (visibile in cima a tutta la pagina) -->
+<div id="new-order-banner" onclick="bannerGoToOrders()">
+    <i class="fa-solid fa-bell fa-shake"></i>&nbsp;&nbsp;
+    <span id="new-order-banner-text">NUOVO ORDINE RICEVUTO!</span>
+    <span class="banner-close" onclick="event.stopPropagation();dismissBanner()">✕</span>
+</div>
 
 <!-- ===== LOGIN ===== -->
 <div id="login-screen">
@@ -243,6 +321,7 @@
                 </div>
                 <div class="notif-badge">
                     <div class="new-order-dot" id="new-order-dot"></div>
+                    <button id="btn-enable-notif" class="btn btn-ghost btn-sm" onclick="requestNotifPermission()" style="display:none;font-size:0.72rem"><i class="fa-solid fa-bell"></i> Abilita notifiche</button>
                     <span id="topbar-date" style="font-size:0.75rem;color:var(--muted)"></span>
                 </div>
             </div>
@@ -426,14 +505,44 @@
             <div class="form-row"><label>Descrizione</label><textarea id="prod-desc"></textarea></div>
             <div class="form-row"><label>Prezzo (€) *</label><input type="number" id="prod-price" step="0.5" min="0"></div>
             <div class="form-row">
-                <label>URL Immagine</label>
-                <input type="url" id="prod-image" placeholder="https://..." oninput="previewImage()">
+                <label>Immagine Prodotto</label>
+                <!-- Tab: URL o Upload file -->
+                <div style="display:flex;gap:0;margin-bottom:8px;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+                    <button type="button" id="tab-url" onclick="switchImgTab('url')" style="flex:1;padding:8px;background:var(--gold);color:#fff;border:none;font-family:inherit;font-size:0.78rem;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;">🔗 URL</button>
+                    <button type="button" id="tab-file" onclick="switchImgTab('file')" style="flex:1;padding:8px;background:#111;color:var(--muted);border:none;font-family:inherit;font-size:0.78rem;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;">📁 Carica File</button>
+                </div>
+                <!-- Tab URL -->
+                <div id="img-tab-url">
+                    <input type="url" id="prod-image" placeholder="https://..." oninput="previewImage()">
+                </div>
+                <!-- Tab Upload -->
+                <div id="img-tab-file" style="display:none;">
+                    <div id="upload-drop-zone" style="border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="$('prod-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--gold)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleFileDrop(event)">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.8rem;color:var(--muted);margin-bottom:8px;display:block;"></i>
+                        <div style="font-size:0.82rem;color:var(--muted);">Clicca o trascina un'immagine qui<br><span style="font-size:0.72rem">JPG, PNG, WebP — max 5MB</span></div>
+                        <div id="upload-status" style="margin-top:8px;font-size:0.8rem;font-weight:700;"></div>
+                    </div>
+                    <input type="file" id="prod-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="uploadImageFile(this.files[0])">
+                </div>
                 <img id="prod-img-preview" class="img-preview" alt="anteprima">
             </div>
             <div class="form-row">
                 <div class="toggle-row">
                     <span>Scelta Obbligatoria (personalizzazione prima di aggiungere)</span>
-                    <label class="toggle"><input type="checkbox" id="prod-mandatory"><span class="slider"></span></label>
+                    <label class="toggle"><input type="checkbox" id="prod-mandatory" onchange="onMandatoryToggle()"><span class="slider"></span></label>
+                </div>
+            </div>
+
+            <!-- Sezione opzioni scelta obbligatoria - visibile solo se mandatory è attivo -->
+            <div id="prod-options-section" style="display:none; background:#111; border:1px solid var(--border); border-radius:8px; padding:16px; margin-top:4px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <span style="font-size:0.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Opzioni da scegliere</span>
+                    <span style="font-size:0.75rem; color:var(--muted)">(es. Salsa Torb, Mayo, BBQ...)</span>
+                </div>
+                <div id="prod-options-list" style="margin-bottom:12px;"></div>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="new-option-input" class="filter-input" placeholder="Nome opzione (es. Salsa Torb)" style="flex:1; font-size:0.85rem;" onkeydown="if(event.key==='Enter'){event.preventDefault();addProductOption();}">
+                    <button class="btn btn-primary btn-sm" onclick="addProductOption()"><i class="fa-solid fa-plus"></i> Aggiungi</button>
                 </div>
             </div>
             <div class="form-row">
@@ -484,9 +593,7 @@ let custCurrentPage = 1;
 let custTotalPages = 1;
 let selectedCatId = null;
 let adminMenuData = { categories: [], products: [] };
-let allOrdersCache = []; // cache per export CSV
-let seenOrderIds = new Set(); // per notifiche nuovi ordini
-let pollingTimer = null;
+let allOrdersCache = [];
 let chartDaily = null;
 let chartProducts = null;
 
@@ -579,8 +686,12 @@ async function checkSession() {
 // INIT
 // ============================================================
 function initApp() {
-    // Data corrente nel topbar
     $('topbar-date').textContent = new Date().toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // Mostra bottone abilita notifiche se non ancora concesse
+    if ('Notification' in window && Notification.permission === 'default') {
+        $('btn-enable-notif').style.display = 'inline-flex';
+    }
 
     showSection('dashboard');
     startPolling();
@@ -606,53 +717,151 @@ function showSection(name) {
 }
 
 // ============================================================
-// POLLING NUOVI ORDINI (ogni 30s)
+// POLLING NUOVI ORDINI — ogni 15 secondi, diff per ID
 // ============================================================
+let knownNewOrderIds = new Set();
+let pollingTimer = null;
+let isFirstPoll = true;
+let bannerDismissed = false;
+
 function startPolling() {
-    loadNewOrdersCheck(); // subito
-    pollingTimer = setInterval(loadNewOrdersCheck, 30000);
+    pollNewOrders(); // subito
+    pollingTimer = setInterval(pollNewOrders, 15000);
 }
 
-async function loadNewOrdersCheck() {
+async function pollNewOrders() {
     try {
-        const res = await fetch('/admin/orders?status=nuovo&limit=50');
+        const res = await fetch('/admin/sse');
         if (!res.ok) return;
         const data = await res.json();
-        const orders = data.orders || [];
-        const newIds = orders.map(o => o.id);
+        const orders = data.newOrders || [];
 
-        const freshNew = newIds.filter(id => !seenOrderIds.has(id));
-
-        if (freshNew.length > 0 && seenOrderIds.size > 0) {
-            // Notifica visiva e sonora per nuovi ordini non visti
-            playBeep();
-            $('new-order-dot').style.display = 'block';
+        // Alla prima chiamata segna tutto come "già visto" senza notificare
+        if (isFirstPoll) {
+            isFirstPoll = false;
+            orders.forEach(o => knownNewOrderIds.add(o.id));
+            updateNewOrdersBadge(orders);
+            return;
         }
 
-        if (orders.length > 0) {
-            $('new-orders-count').textContent = orders.length;
-            $('new-orders-count').style.display = 'inline';
-            $('new-order-dot').style.display = 'block';
-        } else {
-            $('new-orders-count').style.display = 'none';
-            $('new-order-dot').style.display = 'none';
+        // Poll successivi: cerca ID mai visti prima
+        const freshOrders = orders.filter(o => !knownNewOrderIds.has(o.id));
+        orders.forEach(o => knownNewOrderIds.add(o.id));
+
+        if (freshOrders.length > 0) {
+            showNewOrderNotification(freshOrders);
         }
 
-        newIds.forEach(id => seenOrderIds.add(id));
-    } catch {}
+        updateNewOrdersBadge(orders);
+
+        // Aggiorna silenziosamente la sezione aperta
+        if (currentSection === 'dashboard') loadDashboard();
+        if (currentSection === 'orders')    loadOrders();
+
+    } catch (e) {
+        console.warn('Polling errore:', e.message);
+    }
+}
+
+function showNewOrderNotification(orders) {
+    playBeep();
+
+    const count = orders.length;
+    const names = orders.map(o => o.customer_name).join(', ');
+    const totals = orders.map(o => fmt(o.total)).join(', ');
+
+    $('new-order-banner-text').innerHTML =
+        `<i class="fa-solid fa-bell fa-shake"></i>&nbsp;&nbsp;` +
+        `${count > 1 ? count + ' NUOVI ORDINI' : 'NUOVO ORDINE'}` +
+        ` &mdash; <strong>${names}</strong>` +
+        ` &mdash; ${totals}` +
+        `&nbsp;&nbsp;<span style="font-size:0.8rem;opacity:0.8">(clicca per vedere)</span>`;
+
+    bannerDismissed = false;
+    $('new-order-banner').style.display = 'block';
+    $('new-order-dot').style.display = 'block';
+
+    // Auto-dismiss dopo 20 secondi
+    setTimeout(() => { if (!bannerDismissed) dismissBanner(); }, 20000);
+
+    // Notifica browser nativa
+    sendBrowserNotification(orders);
+}
+
+function dismissBanner() {
+    bannerDismissed = true;
+    $('new-order-banner').style.display = 'none';
+}
+
+function bannerGoToOrders() {
+    dismissBanner();
+    showSection('orders');
+}
+
+function updateNewOrdersBadge(newOrders) {
+    const count = newOrders.length;
+    if (count > 0) {
+        $('new-orders-count').textContent = count;
+        $('new-orders-count').style.display = 'inline';
+        $('new-order-dot').style.display = 'block';
+    } else {
+        $('new-orders-count').style.display = 'none';
+        $('new-order-dot').style.display = 'none';
+    }
+}
+
+function sendBrowserNotification(orders) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+        orders.forEach(o => {
+            new Notification('🍔 TORB — Nuovo Ordine!', {
+                body: `${o.customer_name} — Ritiro: ${o.pickup_time} — ${fmt(o.total)}`,
+                icon: '/images/logouff.svg',
+                tag: o.id
+            });
+        });
+    } else if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+function requestNotifPermission() {
+    if (!('Notification' in window)) { alert('Il tuo browser non supporta le notifiche.'); return; }
+    Notification.requestPermission().then(p => {
+        if (p === 'granted') {
+            $('btn-enable-notif').style.display = 'none';
+            alert('Notifiche abilitate!');
+        }
+    });
 }
 
 function playBeep() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = 880;
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+        // Tre beep brevi per rendere evidente la notifica
+        [0, 0.25, 0.5].forEach(delay => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+            gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + delay + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.2);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + 0.2);
+        });
     } catch {}
+}
+
+function requestNotifPermission() {
+    if (!('Notification' in window)) { alert('Il tuo browser non supporta le notifiche.'); return; }
+    Notification.requestPermission().then(p => {
+        if (p === 'granted') {
+            $('btn-enable-notif').style.display = 'none';
+            alert('Notifiche abilitate! Riceverai un avviso sul desktop per ogni nuovo ordine.');
+        }
+    });
 }
 
 // ============================================================
@@ -801,9 +1010,12 @@ async function updateOrderStatus(orderId, newStatus) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ orderId, status: newStatus })
         });
-        // Aggiorna badge nuovi ordini
-        loadNewOrdersCheck();
-        // Ricarica sezione attiva
+        // Rimuovi dal set dei nuovi ordini notificati quando viene preso in carico
+        if (newStatus !== 'nuovo') {
+            knownNewOrderIds.delete(orderId);
+        }
+        // Ricarica badge
+        pollNewOrders();
         if (currentSection === 'orders') loadOrders();
         if (currentSection === 'dashboard') loadDashboard();
         closeModal('modal-order');
@@ -959,6 +1171,9 @@ function openNewProductModal() {
     $('prod-name').value = ''; $('prod-desc').value = ''; $('prod-price').value = '';
     $('prod-image').value = ''; $('prod-img-preview').style.display = 'none';
     $('prod-mandatory').checked = false; $('prod-active').checked = true;
+    $('prod-options-section').style.display = 'none';
+    $('prod-options-list').innerHTML = '';
+    $('new-option-input').value = '';
     openModal('modal-product');
 }
 
@@ -974,8 +1189,116 @@ function openEditProductModal(id) {
     $('prod-image').value = p.image_url || '';
     $('prod-mandatory').checked = p.mandatory_choice === 1;
     $('prod-active').checked = p.active === 1;
+    $('new-option-input').value = '';
     previewImage();
+    onMandatoryToggle();
+    if (p.mandatory_choice === 1) loadProductOptions(p.id);
     openModal('modal-product');
+}
+
+function onMandatoryToggle() {
+    const checked = $('prod-mandatory').checked;
+    $('prod-options-section').style.display = checked ? 'block' : 'none';
+    if (checked) {
+        const id = $('prod-id').value;
+        if (id) loadProductOptions(parseInt(id));
+    }
+}
+
+async function loadProductOptions(productId) {
+    try {
+        const res = await fetch(`/admin/menu/product/${productId}/options`);
+        const opts = await res.json();
+        renderProductOptions(opts);
+    } catch { $('prod-options-list').innerHTML = '<div style="color:var(--muted);font-size:0.8rem">Errore caricamento opzioni</div>'; }
+}
+
+function renderProductOptions(opts) {
+    if (!opts.length) {
+        $('prod-options-list').innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:4px 0;">Nessuna opzione — aggiungine una qui sotto.</div>';
+        return;
+    }
+    $('prod-options-list').innerHTML = opts.map(o =>
+        `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:6px;padding:8px 12px;margin-bottom:6px;font-size:0.85rem;">
+            <span>${o.label}</span>
+            <button class="btn btn-danger btn-sm" onclick="deleteProductOption(${o.id})"><i class="fa-solid fa-xmark"></i></button>
+        </div>`
+    ).join('');
+}
+
+async function addProductOption() {
+    const productId = $('prod-id').value;
+    if (!productId) { alert('Salva prima il prodotto, poi aggiungi le opzioni.'); return; }
+    const label = $('new-option-input').value.trim();
+    if (!label) { alert('Scrivi il nome dell\'opzione.'); return; }
+
+    await fetch(`/admin/menu/product/${productId}/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label })
+    });
+    $('new-option-input').value = '';
+    loadProductOptions(parseInt(productId));
+}
+
+async function deleteProductOption(optionId) {
+    await fetch(`/admin/menu/product-option/${optionId}`, { method: 'DELETE' });
+    const productId = $('prod-id').value;
+    if (productId) loadProductOptions(parseInt(productId));
+}
+
+function switchImgTab(tab) {
+    if (tab === 'url') {
+        $('img-tab-url').style.display = 'block';
+        $('img-tab-file').style.display = 'none';
+        $('tab-url').style.background = 'var(--gold)'; $('tab-url').style.color = '#fff';
+        $('tab-file').style.background = '#111'; $('tab-file').style.color = 'var(--muted)';
+    } else {
+        $('img-tab-url').style.display = 'none';
+        $('img-tab-file').style.display = 'block';
+        $('tab-file').style.background = 'var(--gold)'; $('tab-file').style.color = '#fff';
+        $('tab-url').style.background = '#111'; $('tab-url').style.color = 'var(--muted)';
+    }
+}
+
+function handleFileDrop(event) {
+    event.preventDefault();
+    $('upload-drop-zone').style.borderColor = 'var(--border)';
+    const file = event.dataTransfer.files[0];
+    if (file) uploadImageFile(file);
+}
+
+async function uploadImageFile(file) {
+    if (!file) return;
+    const status = $('upload-status');
+    const zone   = $('upload-drop-zone');
+
+    status.style.color = 'var(--gold)';
+    status.textContent = '⏳ Caricamento in corso...';
+    zone.style.borderColor = 'var(--gold)';
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res  = await fetch('/admin/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Upload fallito');
+
+        // Aggiorna il campo URL con il nuovo percorso immagine
+        $('prod-image').value = data.url;
+        previewImage();
+
+        status.style.color = 'var(--success)';
+        status.textContent = '✅ ' + file.name + ' caricato!';
+        zone.style.borderColor = 'var(--success)';
+
+    } catch (err) {
+        status.style.color = 'var(--red)';
+        status.textContent = '❌ ' + err.message;
+        zone.style.borderColor = 'var(--red)';
+    }
 }
 
 function previewImage() {
