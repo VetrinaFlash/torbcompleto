@@ -933,7 +933,7 @@ async function saveCategory() {
         // Crea
         const id = $('cat-id').value.trim();
         if (!id) { alert('ID obbligatorio.'); return; }
-        await fetch('/admin/menu/category', {
+        await fetch('/admin/menu/category/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id, name, icon: $('cat-icon').value, sort_order: parseInt($('cat-order').value) || 0 })
@@ -945,9 +945,9 @@ async function saveCategory() {
 
 async function toggleCat(id, active) {
     await fetch(`/admin/menu/category/${id}`, {
-        method: 'PUT',
+        method: active ? 'PUT' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active })
+        body: JSON.stringify({ active: active === 1 ? true : false })
     });
     loadAdminMenu();
 }
@@ -1008,7 +1008,7 @@ async function saveProduct() {
             body: JSON.stringify(payload)
         });
     } else {
-        await fetch('/admin/menu/product', {
+        await fetch('/admin/menu/product/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -1020,7 +1020,10 @@ async function saveProduct() {
 
 async function deleteProduct(id) {
     if (!confirm('Vuoi nascondere questo prodotto dal menu pubblico?')) return;
-    await fetch(`/admin/menu/product/${id}`, { method: 'DELETE' });
+    await fetch(`/admin/menu/product/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    });
     loadAdminMenu();
 }
 
