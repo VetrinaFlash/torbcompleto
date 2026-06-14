@@ -236,6 +236,33 @@
             /* Menu admin: una sola colonna */
             .menu-layout { grid-template-columns: 1fr; }
 
+            /* Menu admin mobile: azioni categoria sempre visibili e comode al tocco */
+            .cat-item { padding: 14px 12px; gap: 8px; }
+            .cat-actions { opacity: 1; gap: 8px; }
+            .cat-actions button {
+                background: rgba(255,255,255,.06);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                min-width: 34px;
+                min-height: 34px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                font-size: 0.9rem;
+            }
+
+            /* Header sezione menu: evita sovrapposizione titolo/bottone */
+            #sec-menu-admin > div:first-child { margin-bottom: 14px !important; }
+            #sec-menu-admin h3#admin-prod-title {
+                font-size: 0.78rem !important;
+                line-height: 1.35;
+                margin-right: 10px;
+                word-break: break-word;
+                max-width: 65%;
+            }
+            #btn-new-product { white-space: nowrap; }
+
             /* Modal: larghezza piena */
             .modal-box { max-width: 100%; margin: 0; border-radius: 12px 12px 0 0; align-self: flex-end; }
             .modal-overlay { align-items: flex-end; padding: 0; }
@@ -257,6 +284,16 @@
 
             /* Bottone notifiche */
             #btn-enable-notif { font-size: 0.65rem; padding: 4px 8px; }
+
+            /* Sezione opzioni prodotto in modal: stack verticale su mobile */
+            #prod-options-section > div:last-child {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            #new-option-input,
+            #prod-options-section .btn {
+                width: 100%;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1090,6 +1127,12 @@ function selectCat(id) {
     renderCatList();
     renderProductsForCat(id);
     $('btn-new-product').style.display = 'inline-flex';
+    // Su mobile (layout a colonna singola) scrolla verso la griglia prodotti
+    if (window.innerWidth <= 900) {
+        setTimeout(() => {
+            $('admin-prod-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    }
 }
 
 function renderProductsForCat(catId) {
