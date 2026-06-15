@@ -41,6 +41,11 @@
                 if (res.ok) {
                     // Pulisce dopo salvataggio riuscito per evitare duplicati
                     localStorage.removeItem('torb_order_data');
+                    // Avvisa subito la cucina dopo il salvataggio dell'ordine
+                    setTimeout(inviaWA, 300);
+                } else {
+                    const errorBody = await res.text();
+                    console.warn('Salvataggio ordine fallito:', res.status, errorBody);
                 }
             } catch (e) {
                 // Errore silenzioso: il cliente ha già pagato, non mostrare errori
