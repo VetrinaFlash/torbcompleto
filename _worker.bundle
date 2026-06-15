@@ -1,9 +1,9 @@
-------formdata-undici-089957846562
+------formdata-undici-099845490402
 Content-Disposition: form-data; name="metadata"
 
-{"main_module":"functionsWorker-0.5348615345659893.js"}
-------formdata-undici-089957846562
-Content-Disposition: form-data; name="functionsWorker-0.5348615345659893.js"; filename="functionsWorker-0.5348615345659893.js"
+{"main_module":"functionsWorker-0.4003822042783822.js"}
+------formdata-undici-099845490402
+Content-Disposition: form-data; name="functionsWorker-0.4003822042783822.js"; filename="functionsWorker-0.4003822042783822.js"
 Content-Type: application/javascript+module
 
 var __defProp = Object.defineProperty;
@@ -952,7 +952,7 @@ async function onRequestOptions5() {
 }
 __name(onRequestOptions5, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-hecVSJ/functionsRoutes-0.06654834998011716.mjs
+// ../.wrangler/tmp/pages-7PlT21/functionsRoutes-0.11795067161496231.mjs
 var routes = [
   {
     routePath: "/admin/menu/product/:id/options",
@@ -1587,4 +1587,4 @@ export {
   pages_template_worker_default as default
 };
 
-------formdata-undici-089957846562--
+------formdata-undici-099845490402--
