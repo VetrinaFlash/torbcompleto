@@ -151,7 +151,7 @@
         .form-row input, .form-row textarea, .form-row select { width: 100%; background: #111; border: 1px solid var(--border); color: var(--text); padding: 11px 14px; border-radius: 6px; font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color .2s; }
         .form-row input:focus, .form-row textarea:focus, .form-row select:focus { border-color: var(--gold); }
         .form-row textarea { resize: vertical; min-height: 80px; }
-        .toggle-row { display: flex; align-items: center; justify-content: space-between; background: #111; border: 1px solid var(--border); border-radius: 6px; padding: 11px 14px; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; background: #111; border: 1px solid var(--border); border-radius: 6px; padding: 11px 14px; cursor: pointer; }
         .toggle-row span { font-size: 0.85rem; font-weight: 600; }
         .toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
         .toggle input { opacity: 0; width: 0; height: 0; }
@@ -493,7 +493,7 @@
                     <div class="settings-section">
                         <h3><i class="fa-solid fa-store"></i> &nbsp;Stato Locale</h3>
                         <div class="form-row">
-                            <div class="toggle-row">
+                            <div class="toggle-row" onclick="toggleCheckboxFromRow(event, 'set-override')">
                                 <span>Override Manuale Apertura (ignora orari)</span>
                                 <label class="toggle"><input type="checkbox" id="set-override"><span class="slider"></span></label>
                             </div>
@@ -564,7 +564,7 @@
                 <img id="prod-img-preview" class="img-preview" alt="anteprima">
             </div>
             <div class="form-row">
-                <div class="toggle-row">
+                <div class="toggle-row" onclick="toggleCheckboxFromRow(event, 'prod-mandatory')">
                     <span>Scelta Obbligatoria (personalizzazione prima di aggiungere)</span>
                     <label class="toggle"><input type="checkbox" id="prod-mandatory" onchange="onMandatoryToggle()"><span class="slider"></span></label>
                 </div>
@@ -583,7 +583,7 @@
                 </div>
             </div>
             <div class="form-row">
-                <div class="toggle-row">
+                <div class="toggle-row" onclick="toggleCheckboxFromRow(event, 'prod-active')">
                     <span>Prodotto Attivo (visibile nel menu pubblico)</span>
                     <label class="toggle"><input type="checkbox" id="prod-active" checked><span class="slider"></span></label>
                 </div>
@@ -652,6 +652,14 @@ function getAdminProductImageUrl(rawUrl) {
     if (raw.startsWith('/img/')) return raw;
     if (raw.startsWith('img/')) return '/' + raw;
     return raw.startsWith('/') ? raw : '/' + raw;
+}
+
+function toggleCheckboxFromRow(event, checkboxId) {
+    const checkbox = $(checkboxId);
+    if (!checkbox) return;
+    if (event && event.target && event.target.tagName === 'INPUT') return;
+    checkbox.checked = !checkbox.checked;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function debounce(fn, ms) {

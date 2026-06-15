@@ -242,6 +242,7 @@
             border: 1px solid var(--border-light);
             border-radius: 6px;
             padding: 14px;
+            cursor: pointer;
         }
         .form-check input {
             width: 20px;
@@ -260,6 +261,11 @@
             line-height: 1.45;
             cursor: pointer;
             user-select: none;
+        }
+
+        .form-check input,
+        .form-check label {
+            pointer-events: none;
         }
         
         /* AGGIUNTA FRECCIA TENDINA PER IPHONE/ANDROID DOPO IL RESET */
@@ -427,7 +433,7 @@
                         <textarea id="cust-notes" rows="2" placeholder="Es. Hamburger ben cotto, salse a parte..."></textarea>
                     </div>
                     <div class="form-group">
-                        <div class="form-check">
+                        <div class="form-check" onclick="togglePrivacyConsent(event)">
                             <input type="checkbox" id="cust-privacy" required>
                             <label for="cust-privacy">Accetto il trattamento dei dati personali per la gestione dell'ordine e per essere ricontattato in caso di necessità *</label>
                         </div>
@@ -1094,6 +1100,14 @@
             const img = document.getElementById('item-photo-modal-img');
             modal.classList.remove('active');
             img.removeAttribute('src');
+        }
+
+        function togglePrivacyConsent(event) {
+            const checkbox = document.getElementById('cust-privacy');
+            if (!checkbox) return;
+            const clicked = event && event.target;
+            if (clicked && clicked.tagName === 'INPUT') return;
+            checkbox.checked = !checkbox.checked;
         }
 
         function popolaOrari() {
