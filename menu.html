@@ -422,7 +422,7 @@
                     </div>
                     <div class="form-group">
                         <label>Cellulare *</label>
-                        <input type="tel" id="cust-phone" required placeholder="Es. 3331234567" inputmode="tel" autocomplete="tel">
+                        <input type="tel" id="cust-phone" required placeholder="Es. 3331234567" inputmode="numeric" pattern="[0-9]*" autocomplete="tel" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                     </div>
                     <div class="form-group">
                         <label>Orario Ritiro (Locale) *</label>
@@ -433,9 +433,12 @@
                         <textarea id="cust-notes" rows="2" placeholder="Es. Hamburger ben cotto, salse a parte..."></textarea>
                     </div>
                     <div class="form-group">
-                        <div class="form-check" onclick="togglePrivacyConsent(event)">
+                        <div class="form-check">
                             <input type="checkbox" id="cust-privacy" required>
                             <label for="cust-privacy">Accetto il trattamento dei dati personali per la gestione dell'ordine e per essere ricontattato in caso di necessità *</label>
+                        </div>
+                        <div id="privacy-hint" style="margin-top:8px;font-size:0.78rem;font-weight:700;color:var(--accent-fire);display:none;">
+                            Devi accettare la privacy per continuare.
                         </div>
                     </div>
                     
@@ -1102,17 +1105,6 @@
             img.removeAttribute('src');
         }
 
-        function togglePrivacyConsent(event) {
-            const checkbox = document.getElementById('cust-privacy');
-            if (!checkbox) return;
-            const clicked = event && event.target;
-            if (clicked && clicked.tagName === 'INPUT') return;
-            if (clicked && clicked.tagName === 'LABEL') {
-                event.preventDefault();
-            }
-            checkbox.checked = !checkbox.checked;
-        }
-
         function popolaOrari() {
             const select = document.getElementById('orario-consegna');
             const btnPay = document.getElementById('pay-btn');
@@ -1132,6 +1124,21 @@
                 btnPay.style.opacity = '1';
             }
         }
+
+        function syncPrivacyHint() {
+            const checkbox = document.getElementById('cust-privacy');
+            const hint = document.getElementById('privacy-hint');
+            if (!checkbox || !hint) return;
+            hint.style.display = checkbox.checked ? 'none' : 'block';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.getElementById('cust-privacy');
+            if (checkbox) {
+                checkbox.addEventListener('change', syncPrivacyHint);
+                syncPrivacyHint();
+            }
+        });
 
         async function sendOrderWithDetails() {
             const name = document.getElementById('cust-name').value.trim();
@@ -1158,6 +1165,7 @@
             }
 
             if(!privacyAccepted) {
+                syncPrivacyHint();
                 alert("Devi accettare il trattamento dei dati per proseguire.");
                 return; 
             }
