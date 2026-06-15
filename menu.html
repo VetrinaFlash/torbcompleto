@@ -1057,6 +1057,9 @@
             const raw = String(item.image_url || '').trim();
             if (!raw) return '';
             if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:')) return raw;
+            if (raw.startsWith('/img/products/')) {
+                return '/img/products?key=' + encodeURIComponent(raw.slice('/img/products/'.length));
+            }
             if (raw.startsWith('/img/')) return raw;
             if (raw.startsWith('img/')) return '/' + raw;
             return raw.startsWith('/') ? raw : '/' + raw;

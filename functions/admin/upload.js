@@ -53,8 +53,8 @@ export async function onRequestPost(context) {
       httpMetadata: { contentType: file.type }
     });
 
-    // Restituisce URL relativo (servito da /img/{key})
-    const url = `/img/${key}`;
+    // Restituisce URL relativo compatibile con il route Pages attuale
+    const url = `/img/products?key=${encodeURIComponent(key)}`;
     return new Response(JSON.stringify({ ok: true, url }), { headers: JSON_HEADERS });
 
   } catch (err) {

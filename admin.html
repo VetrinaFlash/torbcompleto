@@ -642,6 +642,18 @@ const fmt = n => Number(n).toFixed(2).replace('.', ',') + ' €';
 const fmtDate = d => d ? new Date(d).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 const fmtDateTime = d => d ? new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 
+function getAdminProductImageUrl(rawUrl) {
+    const raw = String(rawUrl || '').trim();
+    if (!raw) return '';
+    if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:')) return raw;
+    if (raw.startsWith('/img/products/')) {
+        return '/img/products?key=' + encodeURIComponent(raw.slice('/img/products/'.length));
+    }
+    if (raw.startsWith('/img/')) return raw;
+    if (raw.startsWith('img/')) return '/' + raw;
+    return raw.startsWith('/') ? raw : '/' + raw;
+}
+
 function debounce(fn, ms) {
     let timer;
     return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
@@ -1146,7 +1158,7 @@ function renderProductsForCat(catId) {
     $('admin-prod-title').textContent = cat ? `${cat.icon} ${cat.name}` : 'Prodotti';
     $('admin-prod-grid').innerHTML = prods.length ? prods.map(p => `
         <div class="prod-card ${p.active ? '' : 'inactive'}">
-            ${p.image_url ? `<img class="prod-img" src="${p.image_url}" alt="${p.name}" onerror="this.style.display='none'">` : `<div class="prod-img-placeholder">🍽️</div>`}
+            ${p.image_url ? `<img class="prod-img" src="${getAdminProductImageUrl(p.image_url)}" alt="${p.name}" onerror="this.style.display='none'">` : `<div class="prod-img-placeholder">🍽️</div>`}
             <div class="prod-body">
                 <div class="prod-name">${p.name}</div>
                 <div class="prod-price">${fmt(p.price)}</div>
