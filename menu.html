@@ -149,25 +149,6 @@
             display: block;
             background: #f1f1f1;
         }
-        .item-photo-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            background: rgba(184,134,11,0.08);
-            color: var(--accent-gold);
-            border: 1px solid rgba(184,134,11,0.22);
-            border-radius: 8px;
-            padding: 10px 12px;
-            font-size: 0.76rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: 0.2s;
-            margin-bottom: 10px;
-        }
-        .item-photo-btn:active { transform: scale(0.98); background: rgba(184,134,11,0.14); }
         .item-photo-modal {
             position: fixed;
             inset: 0;
@@ -317,7 +298,6 @@
             .category-title { grid-column: span 2; }
             .menu-item { margin: 0; height: 100%; }
             .upsell-container { grid-template-columns: repeat(3, 1fr); }
-            .item-photo-btn { width: auto; }
         }
         @media (min-width: 1024px) {
             .category-section { grid-template-columns: repeat(3, 1fr); }
@@ -623,10 +603,21 @@
         let menuData = [];
 
         let cart = {}; let itemMap = {}; let currentCustomItemId = null;
+        let openingHoursConfig = null;
+        let storeOverrideOpen = '';
 
         // CALCOLO ORARI E GESTIONE CHIUSURA LOCALE TORB
         function getAvailableSlots() {
             let slots = [];
+            if (String(storeOverrideOpen || '').trim()) {
+                return generateSlotsFromRange(storeOverrideOpen);
+            }
+
+            if (openingHoursConfig) {
+                const daySlots = openingHoursConfig[getLogicalDayIndex(new Date())];
+                return generateSlotsFromRange(daySlots);
+            }
+
             let now = new Date();
             now.setMinutes(now.getMinutes() + 15);
             
@@ -678,6 +669,55 @@
             return slots;
         }
 
+        function getLogicalDayIndex(now) {
+            const current = new Date(now);
+            if (current.getHours() < 5) {
+                return current.getDay() === 0 ? 6 : current.getDay() - 1;
+            }
+            return current.getDay();
+        }
+
+        function generateSlotsFromRange(range) {
+            const slots = [];
+            if (!range) return [];
+
+            let schedule = range;
+            if (Array.isArray(range)) {
+                schedule = range[0] || null;
+            }
+            if (!schedule) return [];
+
+            const open = parseTimeToMinutes(schedule.open);
+            const close = parseTimeToMinutes(schedule.close);
+            if (open == null || close == null) return [];
+
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 15);
+            let current = now.getHours() * 60 + now.getMinutes();
+            if (now.getHours() < 5) current += 24 * 60;
+
+            let startMins = Math.max(current, open);
+            let remainder = startMins % 15;
+            if (remainder !== 0) startMins += (15 - remainder);
+
+            for (let t = startMins; t <= close; t += 15) {
+                const displayH = Math.floor(t / 60) % 24;
+                const displayM = t % 60;
+                slots.push(`${String(displayH).padStart(2, '0')}:${String(displayM).padStart(2, '0')}`);
+            }
+
+            return slots;
+        }
+
+        function parseTimeToMinutes(value) {
+            if (value == null) return null;
+            if (typeof value === 'number') return value;
+            const text = String(value).trim();
+            const match = text.match(/^([0-2]?\d):([0-5]\d)$/);
+            if (!match) return null;
+            return parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+        }
+
         // CONTROLLA SE IL NEGOZIO E' APERTO
         function checkStoreStatus() {
             let slots = getAvailableSlots();
@@ -703,6 +743,24 @@
             }
         }
 
+        async function loadPublicSettings() {
+            try {
+                const res = await fetch('/api/settings', { cache: 'no-cache' });
+                if (!res.ok) return;
+                const data = await res.json();
+                storeOverrideOpen = data.store_override_open || '';
+                if (data.opening_hours) {
+                    try { openingHoursConfig = JSON.parse(data.opening_hours); } catch { openingHoursConfig = null; }
+                }
+                const promoBar = document.querySelector('.promo-bar');
+                if (promoBar && data.promo_bar_text) {
+                    promoBar.innerHTML = `<i class="fa-solid fa-fire"></i> ${escapeHtml(data.promo_bar_text)} <i class="fa-solid fa-fire"></i>`;
+                }
+            } catch (e) {
+                console.warn('Settings pubbliche non caricate:', e.message);
+            }
+        }
+
         function buildItemMap() {
             menuData.forEach(cat => cat.items.forEach(i => { i.categoryId = cat.id; itemMap[i.id] = i; }));
         }
@@ -712,8 +770,10 @@
             renderFilters(); 
             renderMenu(); 
 
-            checkStoreStatus();
-            setInterval(checkStoreStatus, 60000);
+            loadPublicSettings().finally(() => {
+                checkStoreStatus();
+                setInterval(checkStoreStatus, 60000);
+            });
         }
 
         function renderFilters() {
@@ -749,17 +809,15 @@
                     const hideCustomBtn = (cat.id === 'bibite' || cat.id === 'birre-spina' || cat.id === 'birre-bottiglia' || cat.id === 'bollicine' || cat.id.startsWith('vini') || cat.id === 'contorni' || cat.id === 'dolci' || !item.desc);
                     const customBtn = hideCustomBtn ? '' : `<button class="btn-custom" onclick="openCustomModal(${item.id})"><i class="fa-solid fa-pen fa-xs"></i> Rimuovi</button>`;
                     const itemImage = getItemImageUrl(item);
-                    const photoBtn = itemImage ? `<button class="item-photo-btn" onclick="openPhotoModal('${escapeJs(itemImage)}', '${escapeJs(item.name)}')"><i class="fa-regular fa-image"></i> Guarda la foto</button>` : '';
                     
                     html += `
                         <div class="menu-item" data-id="${item.id}">
-                            ${itemImage ? `<div class="item-media"><img class="item-image-thumb" src="${escapeHtml(itemImage)}" alt="${escapeHtml(item.name)}"></div>` : ''}
+                            ${itemImage ? `<div class="item-media"><img class="item-image-thumb" src="${escapeHtml(itemImage)}" alt="${escapeHtml(item.name)}" loading="lazy"></div>` : ''}
                             <div class="item-header">
                                 <div class="item-name">${item.name}</div>
                                 <div class="item-price">${item.price.toFixed(2).replace('.',',')}€</div>
                             </div>
                             ${item.desc ? `<p class="item-desc">${item.desc}</p>` : ''}
-                            ${photoBtn}
                             <div class="controls">
                                 ${customBtn}
                                 <div class="qty-box">
@@ -996,7 +1054,11 @@
         function getItemImageUrl(item) {
             if (!item) return '';
             const raw = String(item.image_url || '').trim();
-            return raw;
+            if (!raw) return '';
+            if (/^(https?:)?\/\//i.test(raw) || raw.startsWith('data:')) return raw;
+            if (raw.startsWith('/img/')) return raw;
+            if (raw.startsWith('img/')) return '/' + raw;
+            return raw.startsWith('/') ? raw : '/' + raw;
         }
 
         function escapeHtml(value) {
