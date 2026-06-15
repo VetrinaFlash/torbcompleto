@@ -1107,6 +1107,9 @@
             if (!checkbox) return;
             const clicked = event && event.target;
             if (clicked && clicked.tagName === 'INPUT') return;
+            if (clicked && clicked.tagName === 'LABEL') {
+                event.preventDefault();
+            }
             checkbox.checked = !checkbox.checked;
         }
 
@@ -1136,9 +1139,21 @@
             const time = document.getElementById('orario-consegna').value;
             const notes = document.getElementById('cust-notes').value.trim();
             const privacyAccepted = document.getElementById('cust-privacy').checked;
+            const nameOk = /^[A-Za-zÀ-ÿ'\- ]{2,}$/.test(name);
+            const phoneOk = /^[0-9 +()\-]{8,20}$/.test(phone);
             
             if(!name || !phone || !time) {
                 alert("Compila nome, cellulare e orario per il ritiro.");
+                return; 
+            }
+
+            if (!nameOk) {
+                alert("Inserisci un nome valido.");
+                return;
+            }
+
+            if (!phoneOk) {
+                alert("Inserisci un numero di cellulare valido.");
                 return; 
             }
 
