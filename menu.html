@@ -244,6 +244,10 @@
             padding: 14px;
             cursor: pointer;
         }
+        .form-check.checked {
+            border-color: rgba(211, 47, 47, 0.65);
+            box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.12);
+        }
         .form-check input {
             width: 20px;
             height: 20px;
@@ -251,6 +255,22 @@
             accent-color: var(--accent-fire);
             flex-shrink: 0;
             cursor: pointer;
+        }
+        .privacy-state {
+            display: none;
+            margin-left: auto;
+            align-self: center;
+            background: var(--accent-fire);
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 900;
+            padding: 3px 8px;
+            border-radius: 999px;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+        .form-check.checked .privacy-state {
+            display: inline-flex;
         }
         .form-check label {
             margin: 0;
@@ -440,6 +460,7 @@
                         <div class="form-check" role="button" tabindex="0" onclick="togglePrivacyConsentRow()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePrivacyConsentRow();}">
                             <input type="checkbox" id="cust-privacy" required>
                             <label for="cust-privacy">Accetto il trattamento dei dati personali per la gestione dell'ordine e per essere ricontattato in caso di necessità *</label>
+                            <span class="privacy-state" id="privacy-state">OK</span>
                         </div>
                         <div id="privacy-hint" style="margin-top:8px;font-size:0.78rem;font-weight:700;color:var(--accent-fire);display:none;">
                             Devi accettare la privacy per continuare.
@@ -1132,8 +1153,12 @@
         function syncPrivacyHint() {
             const checkbox = document.getElementById('cust-privacy');
             const hint = document.getElementById('privacy-hint');
+            const row = document.querySelector('.form-check[role="button"]');
+            const state = document.getElementById('privacy-state');
             if (!checkbox || !hint) return;
             hint.style.display = checkbox.checked ? 'none' : 'block';
+            if (row) row.classList.toggle('checked', checkbox.checked);
+            if (state) state.style.display = checkbox.checked ? 'inline-flex' : 'none';
         }
 
         function togglePrivacyConsentRow() {
