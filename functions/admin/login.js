@@ -7,7 +7,7 @@ import { buildSessionCookie } from '../_shared/auth.js';
 const ADMIN_USERNAME = 'T0R13';
 const ADMIN_PASSWORD = 'T0R13';
 
-export async function onRequestPost(context) {
+async function handleLogin(context) {
   const { env, request } = context;
 
   try {
@@ -44,6 +44,30 @@ export async function onRequestPost(context) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
+}
+
+export async function onRequest(context) {
+  const method = context.request.method;
+
+  if (method === 'POST') {
+    return handleLogin(context);
+  }
+
+  if (method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+
+  return new Response(JSON.stringify({ error: 'Metodo non supportato' }), {
+    status: 405,
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 export async function onRequestOptions() {
