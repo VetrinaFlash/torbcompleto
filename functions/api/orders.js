@@ -14,17 +14,30 @@ export async function onRequestPost(context) {
     const body = await request.json();
 
     // Validazione campi obbligatori
-    const { orderId, customerName, pickupTime, notes, items, subtotal, discountRate, total } = body;
-    if (!orderId || !customerName || !pickupTime || !items || total == null) {
+    const { orderId, customerName, customerPhone, privacyAccepted, pickupTime, notes, items, subtotal, discountRate, total } = body;
+    if (!orderId || !customerName || !customerPhone || !pickupTime || !items || total == null || !privacyAccepted) {
       return new Response(JSON.stringify({ error: 'Dati ordine incompleti' }), {
         status: 400,
         headers: corsHeaders
       });
     }
 
+    async function ensureColumn(table, column, definition) {
+      const info = await env.DB.prepare(`PRAGMA table_info(${table})`).all();
+      const exists = info.results.some(row => row.name === column);
+      if (!exists) {
+        await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+      }
+    }
+
+    await ensureColumn('orders', 'customer_phone', 'TEXT DEFAULT ""');
+    await ensureColumn('orders', 'privacy_accepted', 'INTEGER DEFAULT 0');
+
     // Sanitizzazione base: campi stringa troncati
     const safeOrderId    = String(orderId).substring(0, 50);
     const safeName       = String(customerName).substring(0, 100);
+    const safePhone      = String(customerPhone).substring(0, 30);
+    const safePrivacy    = privacyAccepted ? 1 : 0;
     const safeTime       = String(pickupTime).substring(0, 10);
     const safeNotes      = String(notes || '').substring(0, 500);
     const safeItemsJson  = JSON.stringify(items).substring(0, 10000);
@@ -34,9 +47,9 @@ export async function onRequestPost(context) {
 
     // Inserimento ordine in D1
     await env.DB.prepare(
-      `INSERT OR IGNORE INTO orders (id, customer_name, pickup_time, notes, items_json, subtotal, discount_rate, total, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'nuovo')`
-    ).bind(safeOrderId, safeName, safeTime, safeNotes, safeItemsJson, safeSubtotal, safeDiscount, safeTotal).run();
+      `INSERT OR IGNORE INTO orders (id, customer_name, customer_phone, privacy_accepted, pickup_time, notes, items_json, subtotal, discount_rate, total, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuovo')`
+     ).bind(safeOrderId, safeName, safePhone, safePrivacy, safeTime, safeNotes, safeItemsJson, safeSubtotal, safeDiscount, safeTotal).run();
 
     // Aggiorna o crea il cliente nel CRM
     const now = new Date().toISOString();

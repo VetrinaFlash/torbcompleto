@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   customer_name TEXT NOT NULL,
+  customer_phone TEXT DEFAULT '',
+  privacy_accepted INTEGER DEFAULT 0,
   pickup_time TEXT NOT NULL,
   notes TEXT DEFAULT '',
   items_json TEXT NOT NULL,

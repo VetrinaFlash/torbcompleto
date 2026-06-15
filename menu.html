@@ -690,6 +690,7 @@
             const open = parseTimeToMinutes(schedule.open);
             const close = parseTimeToMinutes(schedule.close);
             if (open == null || close == null) return [];
+            const adjustedClose = close <= open ? close + 24 * 60 : close;
 
             const now = new Date();
             now.setMinutes(now.getMinutes() + 15);
@@ -700,7 +701,7 @@
             let remainder = startMins % 15;
             if (remainder !== 0) startMins += (15 - remainder);
 
-            for (let t = startMins; t <= close; t += 15) {
+            for (let t = startMins; t <= adjustedClose; t += 15) {
                 const displayH = Math.floor(t / 60) % 24;
                 const displayM = t % 60;
                 slots.push(`${String(displayH).padStart(2, '0')}:${String(displayM).padStart(2, '0')}`);
