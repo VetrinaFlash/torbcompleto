@@ -267,6 +267,10 @@
         .form-check label {
             pointer-events: none;
         }
+
+        .form-check[role="button"] {
+            user-select: none;
+        }
         
         /* AGGIUNTA FRECCIA TENDINA PER IPHONE/ANDROID DOPO IL RESET */
         .form-group select {
@@ -433,7 +437,7 @@
                         <textarea id="cust-notes" rows="2" placeholder="Es. Hamburger ben cotto, salse a parte..."></textarea>
                     </div>
                     <div class="form-group">
-                        <div class="form-check">
+                        <div class="form-check" role="button" tabindex="0" onclick="togglePrivacyConsentRow()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePrivacyConsentRow();}">
                             <input type="checkbox" id="cust-privacy" required>
                             <label for="cust-privacy">Accetto il trattamento dei dati personali per la gestione dell'ordine e per essere ricontattato in caso di necessità *</label>
                         </div>
@@ -1130,6 +1134,13 @@
             const hint = document.getElementById('privacy-hint');
             if (!checkbox || !hint) return;
             hint.style.display = checkbox.checked ? 'none' : 'block';
+        }
+
+        function togglePrivacyConsentRow() {
+            const checkbox = document.getElementById('cust-privacy');
+            if (!checkbox) return;
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
         document.addEventListener('DOMContentLoaded', () => {
