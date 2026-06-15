@@ -1022,6 +1022,7 @@ async function loadOrders(resetPage = false) {
             <tr>
                 <td style="font-family:monospace;font-size:0.8rem">${o.id}</td>
                 <td>${o.customer_name}</td>
+                <td>${o.customer_phone || '—'}</td>
                 <td>${o.pickup_time}</td>
                 <td style="color:var(--gold);font-weight:700">${fmt(o.total)}</td>
                 <td>${statusBadge(o.status)}</td>
@@ -1029,9 +1030,9 @@ async function loadOrders(resetPage = false) {
                     <button class="btn btn-ghost btn-sm" onclick="openOrderDetail(${JSON.stringify(o).replace(/"/g,'&quot;')})"><i class="fa-solid fa-eye"></i></button>
                     ${statusButtons(o.id, o.status)}
                 </td>
-            </tr>`).join('') : '<tr><td colspan="6" style="color:var(--muted);text-align:center">Nessun ordine trovato</td></tr>';
+            </tr>`).join('') : '<tr><td colspan="7" style="color:var(--muted);text-align:center">Nessun ordine trovato</td></tr>';
     } catch (e) {
-        $('orders-body').innerHTML = `<tr><td colspan="6" style="color:var(--muted);text-align:center">Errore: ${e.message}</td></tr>`;
+        $('orders-body').innerHTML = `<tr><td colspan="7" style="color:var(--muted);text-align:center">Errore: ${e.message}</td></tr>`;
     }
 }
 
@@ -1068,7 +1069,9 @@ function openOrderDetail(o) {
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">ID: <strong style="color:var(--text)">${o.id}</strong></p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:0.85rem;">
             <div><span style="color:var(--muted)">Cliente:</span> <strong>${o.customer_name}</strong></div>
+            <div><span style="color:var(--muted)">Cellulare:</span> <strong>${o.customer_phone || '—'}</strong></div>
             <div><span style="color:var(--muted)">Ritiro:</span> <strong>${o.pickup_time}</strong></div>
+            <div><span style="color:var(--muted)">Privacy:</span> <strong>${o.privacy_accepted ? 'Sì' : 'No'}</strong></div>
             <div><span style="color:var(--muted)">Status:</span> ${statusBadge(o.status)}</div>
             <div><span style="color:var(--muted)">Data:</span> ${fmtDateTime(o.created_at)}</div>
         </div>
@@ -1092,8 +1095,8 @@ function openOrderDetail(o) {
 
 function exportOrdersCSV() {
     if (!allOrdersCache.length) { alert('Nessun ordine da esportare.'); return; }
-    const rows = [['ID', 'Cliente', 'Ritiro', 'Note', 'Subtotale', 'Sconto%', 'Totale', 'Status', 'Data']];
-    allOrdersCache.forEach(o => rows.push([o.id, o.customer_name, o.pickup_time, o.notes, o.subtotal, o.discount_rate, o.total, o.status, o.created_at]));
+    const rows = [['ID', 'Cliente', 'Cellulare', 'Privacy', 'Ritiro', 'Note', 'Subtotale', 'Sconto%', 'Totale', 'Status', 'Data']];
+    allOrdersCache.forEach(o => rows.push([o.id, o.customer_name, o.customer_phone || '', o.privacy_accepted ? 'Sì' : 'No', o.pickup_time, o.notes, o.subtotal, o.discount_rate, o.total, o.status, o.created_at]));
     downloadCSV(rows, 'ordini-torb.csv');
 }
 
