@@ -609,8 +609,8 @@
         // CALCOLO ORARI E GESTIONE CHIUSURA LOCALE TORB
         function getAvailableSlots() {
             let slots = [];
-            if (String(storeOverrideOpen || '').trim()) {
-                return generateSlotsFromRange(storeOverrideOpen);
+            if (String(storeOverrideOpen || '').trim().toLowerCase() === 'true') {
+                return generateSlotsFromRange({ open: '00:00', close: '23:45' });
             }
 
             if (openingHoursConfig) {
@@ -749,7 +749,7 @@
                 const res = await fetch('/api/settings', { cache: 'no-cache' });
                 if (!res.ok) return;
                 const data = await res.json();
-                storeOverrideOpen = data.store_override_open || '';
+                storeOverrideOpen = String(data.store_override_open || '').trim().toLowerCase();
                 if (data.opening_hours) {
                     try { openingHoursConfig = JSON.parse(data.opening_hours); } catch { openingHoursConfig = null; }
                 }
