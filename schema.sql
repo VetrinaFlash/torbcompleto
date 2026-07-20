@@ -58,6 +58,28 @@ CREATE TABLE IF NOT EXISTS customers (
   last_order_at TEXT
 );
 
+-- Promo Codes (Codici Sconto)
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT UNIQUE NOT NULL,
+  discount_type TEXT NOT NULL CHECK (discount_type IN ('fixed', 'percentage')),
+  value REAL NOT NULL,
+  active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now','localtime')),
+  updated_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
+-- Homepage Buttons (Bottoni Landing Page)
+CREATE TABLE IF NOT EXISTS homepage_buttons (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  label TEXT NOT NULL,
+  url TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now','localtime')),
+  updated_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
 -- ============================================================
 -- SEED: Impostazioni default
 -- ============================================================
@@ -66,6 +88,25 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
   ('promo_bar_text', 'SCONTO 10% SOPRA I 20€ | SCONTO 20% SOPRA I 50€'),
   ('store_override_open', ''),
   ('opening_hours', '{"1":null,"2":{"open":"19:00","close":"01:00"},"3":{"open":"19:00","close":"01:00"},"4":{"open":"19:00","close":"01:00"},"5":{"open":"19:00","close":"02:30"},"6":{"open":"19:00","close":"02:30"},"0":{"open":"19:00","close":"01:00"}}');
+
+-- ============================================================
+-- SEED: Promo Codes (esempi)
+-- ============================================================
+INSERT OR IGNORE INTO promo_codes (code, discount_type, value, active) VALUES
+  ('BENVENUTO10', 'percentage', 10.00, 1),
+  ('SCONTO5', 'fixed', 5.00, 1),
+  ('SUMMER20', 'percentage', 20.00, 0);
+
+-- ============================================================
+-- SEED: Homepage Buttons
+-- ============================================================
+INSERT OR IGNORE INTO homepage_buttons (label, url, sort_order, active) VALUES
+  ('Ordina e Ritira', 'menu.html', 1, 1),
+  ('Ordina a Domicilio', '#delivery-modal', 2, 1),
+  ('Prenota un Tavolo', 'https://67ape8dslvci9fpzpmngl8dwcekglxg0.forms.pienissimo.pro/?id=4NuGYl', 3, 1),
+  ('Guarda il Menù', '/torbmenu.pdf', 4, 1);
+
+
 
 -- ============================================================
 -- SEED: Categorie

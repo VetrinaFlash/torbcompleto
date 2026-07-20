@@ -434,7 +434,25 @@
                 <div class="recap-list" id="recap-list-container"></div>
                 
                 <div id="recap-promo-alert"></div>
-                
+
+                <!-- FORM PROMO CODE -->
+                <div id="recap-promo-code-form" style="background: var(--bg-body); border: 1px solid var(--border-light); border-radius: 8px; padding: 15px; margin-bottom: 15px; display: none;">
+                    <h4 style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 10px;">Hai un codice promo?</h4>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="promo-code-input" placeholder="Inserisci codice promo" style="flex: 1; padding: 11px 14px; border-radius: 4px; background: #ffffff; border: 1px solid var(--border-light); color: var(--text-main); outline: none; font-family: inherit; font-size: 0.95rem; text-transform: uppercase;" onkeydown="if(event.key==='Enter') applyPromoCode()">
+                        <button onclick="applyPromoCode()" style="padding: 11px 16px; border-radius: 4px; background: var(--accent-gold); color: #fff; border: none; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; cursor: pointer; white-space: nowrap; transition: background 0.2s;" onmouseover="this.style.background='#9e730a'" onmouseout="this.style.background='var(--accent-gold)'">Applica</button>
+                    </div>
+                    <div id="promo-code-status" style="font-size: 0.8rem; color: var(--text-muted); min-height: 18px;"></div>
+                </div>
+
+                <div id="recap-promo-discount-info" style="display: none; background: rgba(211, 47, 47, 0.05); border: 1px solid rgba(211, 47, 47, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-fire); margin-bottom: 6px;">Promo Code Applicato! ✓</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                        <div>Codice: <strong id="applied-promo-code-display"></strong></div>
+                        <div>Sconto: <strong id="applied-promo-discount-display"></strong></div>
+                    </div>
+                </div>
+
                 <h4 style="color: var(--accent-gold); margin-top: 25px; font-size: 1.1rem; font-weight: 900; text-transform: uppercase;">Completa l'ordine</h4>
                 <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-bottom: 10px;">Aggiungi al volo i nostri preferiti:</p>
                 <div class="upsell-container" id="upsell-container"></div>
@@ -662,6 +680,10 @@
         let cart = {}; let itemMap = {}; let currentCustomItemId = null;
         let openingHoursConfig = null;
         let storeOverrideOpen = '';
+
+        // PROMO CODE STATE
+        let appliedPromoCode = null; // { code, discount_type, value }
+        let promoCodeError = '';
 
         // CALCOLO ORARI E GESTIONE CHIUSURA LOCALE TORB
         function getAvailableSlots() {
@@ -1023,6 +1045,9 @@
             }
             if(totItems===0) { closeRecap(); return; }
 
+            // Mostra il form promo code se non c'è già un promo code applicato
+            updatePromoCodeDisplay();
+
             const promoAlertBox = document.getElementById('recap-promo-alert');
             if(subtotal < 20) {
                 let missing = 20 - subtotal;
@@ -1055,7 +1080,10 @@
             document.getElementById('recap-modal').classList.add('active');
         }
 
-        function closeRecap() { document.getElementById('recap-modal').classList.remove('active'); }
+        function closeRecap() { 
+            appliedPromoCode = null; // Reset promo code quando chiudi il recap
+            document.getElementById('recap-modal').classList.remove('active'); 
+        }
         
         function proceedToCheckout() { 
             let slots = getAvailableSlots();
@@ -1073,18 +1101,28 @@
                 if(cart[id]>0 && itemMap[id]) subtotal += itemMap[id].price * cart[id];
             }
             
-            let discountRate = 0;
-            if(subtotal >= 50) discountRate = 0.20;
-            else if(subtotal >= 20) discountRate = 0.10;
+            // Calcola sconto automatico per soglie (10% da 20€, 20% da 50€)
+            let autoDiscountRate = 0;
+            if(subtotal >= 50) autoDiscountRate = 0.20;
+            else if(subtotal >= 20) autoDiscountRate = 0.10;
+            let autoDiscountAmount = subtotal * autoDiscountRate;
 
-            let discountAmount = subtotal * discountRate;
-            let total = subtotal - discountAmount;
+            // Calcola sconto da promo code
+            let promoDiscountAmount = calculatePromoDiscount(subtotal);
+            
+            // Sconto totale è la somma di auto discount e promo (sconto fisso promo non si cumula con auto)
+            let totalDiscount = autoDiscountAmount + promoDiscountAmount;
+            let total = subtotal - totalDiscount;
 
             let infoHtml = `<div style="background:var(--bg-body); padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid var(--border-light);">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:0.9rem;"><span>Subtotale:</span> <span>${subtotal.toFixed(2).replace('.',',')}€</span></div>`;
             
-            if(discountRate > 0) {
-                infoHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:5px; color:var(--accent-fire); font-weight:bold; font-size:0.9rem;"><span>Sconto ${discountRate*100}%:</span> <span>-${discountAmount.toFixed(2).replace('.',',')}€</span></div>`;
+            if(autoDiscountRate > 0) {
+                infoHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:5px; color:var(--accent-fire); font-weight:bold; font-size:0.9rem;"><span>Sconto automatico ${autoDiscountRate*100}%:</span> <span>-${autoDiscountAmount.toFixed(2).replace('.',',')}€</span></div>`;
+            }
+
+            if(promoDiscountAmount > 0) {
+                infoHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:5px; color:var(--accent-gold); font-weight:bold; font-size:0.9rem;"><span>Sconto Promo Code (${appliedPromoCode.code}):</span> <span>-${promoDiscountAmount.toFixed(2).replace('.',',')}€</span></div>`;
             }
 
             infoHtml += `<div style="display:flex; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-light); font-weight:900; font-size:1.3rem; color:var(--accent-gold);"><span>TOTALE:</span> <span>${total.toFixed(2).replace('.',',')}€</span></div></div>`;
@@ -1102,6 +1140,11 @@
                     <span style="text-decoration:underline; font-size:0.8rem; font-weight:bold;">Clicca qui per aggiungere altro</span>
                 </div>`;
             }
+
+            // Salva il total discount nel sessionStorage per uso nel checkout
+            sessionStorage.setItem('orderPromoCode', JSON.stringify(appliedPromoCode));
+            sessionStorage.setItem('orderAutoDiscount', autoDiscountRate);
+            sessionStorage.setItem('orderPromoDiscount', promoDiscountAmount);
 
             document.getElementById('checkout-order-info').innerHTML = infoHtml;
             document.getElementById('checkout-modal').classList.add('active'); 
@@ -1149,6 +1192,86 @@
             modal.classList.remove('active');
             img.removeAttribute('src');
         }
+
+        // ============================================================
+        // PROMO CODE FUNCTIONS
+        // ============================================================
+        async function applyPromoCode() {
+            const input = document.getElementById('promo-code-input');
+            const code = input?.value?.trim().toUpperCase() || '';
+            const statusDiv = document.getElementById('promo-code-status');
+
+            if (!code) {
+                statusDiv.textContent = 'Inserisci un codice promo';
+                statusDiv.style.color = 'var(--accent-fire)';
+                return;
+            }
+
+            try {
+                statusDiv.textContent = 'Verifica in corso...';
+                statusDiv.style.color = 'var(--text-muted)';
+
+                const res = await fetch('/api/promo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok || !data.ok) {
+                    appliedPromoCode = null;
+                    statusDiv.textContent = data.error || 'Codice non valido';
+                    statusDiv.style.color = 'var(--accent-fire)';
+                    updatePromoCodeDisplay();
+                    return;
+                }
+
+                appliedPromoCode = data.promo;
+                statusDiv.textContent = `✓ Codice ${code} applicato con successo!`;
+                statusDiv.style.color = 'var(--success || #4caf50)';
+                input.value = '';
+                updatePromoCodeDisplay();
+
+            } catch (e) {
+                appliedPromoCode = null;
+                statusDiv.textContent = 'Errore: ' + e.message;
+                statusDiv.style.color = 'var(--accent-fire)';
+                updatePromoCodeDisplay();
+            }
+        }
+
+        function updatePromoCodeDisplay() {
+            const form = document.getElementById('recap-promo-code-form');
+            const discountInfo = document.getElementById('recap-promo-discount-info');
+
+            if (appliedPromoCode) {
+                form.style.display = 'none';
+                discountInfo.style.display = 'block';
+                const code = appliedPromoCode.code;
+                const discountText = appliedPromoCode.discount_type === 'fixed'
+                    ? `-${appliedPromoCode.value.toFixed(2).replace('.', ',')}€`
+                    : `-${appliedPromoCode.value}%`;
+                document.getElementById('applied-promo-code-display').textContent = code;
+                document.getElementById('applied-promo-discount-display').textContent = discountText;
+            } else {
+                form.style.display = 'block';
+                discountInfo.style.display = 'none';
+            }
+        }
+
+        function calculatePromoDiscount(subtotal) {
+            if (!appliedPromoCode) return 0;
+
+            if (appliedPromoCode.discount_type === 'fixed') {
+                return Math.min(appliedPromoCode.value, subtotal);
+            } else if (appliedPromoCode.discount_type === 'percentage') {
+                return subtotal * (appliedPromoCode.value / 100);
+            }
+
+            return 0;
+        }
+        
 
         function popolaOrari() {
             const select = document.getElementById('orario-consegna');
@@ -1244,17 +1367,27 @@
                 }
             }
 
-            let discountRate = 0;
-            if(subtotal >= 50) discountRate = 0.20;
-            else if(subtotal >= 20) discountRate = 0.10;
+            // Calcola sconto automatico per soglie (10% da 20€, 20% da 50€)
+            let autoDiscountRate = 0;
+            if(subtotal >= 50) autoDiscountRate = 0.20;
+            else if(subtotal >= 20) autoDiscountRate = 0.10;
+            let autoDiscountAmount = subtotal * autoDiscountRate;
 
-            let total = subtotal;
+            // Calcola sconto da promo code
+            let promoDiscountAmount = calculatePromoDiscount(subtotal);
 
-            if(discountRate > 0) {
-                let discountAmount = subtotal * discountRate;
-                total = subtotal - discountAmount;
-                items.push({ name: `Sconto PROMO ${discountRate*100}%`, price: -discountAmount, qty: 1 });
-                txt += `\n*** SCONTO APPLICATO (${discountRate*100}%): *** -${discountAmount.toFixed(2)} Euro\n`;
+            // Sconto totale
+            let totalDiscountAmount = autoDiscountAmount + promoDiscountAmount;
+            let total = subtotal - totalDiscountAmount;
+
+            if(autoDiscountRate > 0) {
+                items.push({ name: `Sconto PROMO ${autoDiscountRate*100}%`, price: -autoDiscountAmount, qty: 1 });
+                txt += `\n*** SCONTO AUTOMATICO (${autoDiscountRate*100}%): *** -${autoDiscountAmount.toFixed(2)} Euro\n`;
+            }
+
+            if(promoDiscountAmount > 0 && appliedPromoCode) {
+                items.push({ name: `Sconto Codice Promo ${appliedPromoCode.code}`, price: -promoDiscountAmount, qty: 1 });
+                txt += `\n*** SCONTO CODICE PROMO (${appliedPromoCode.code}): *** -${promoDiscountAmount.toFixed(2)} Euro\n`;
             }
             
             if (total < 1.00) { 
@@ -1276,9 +1409,11 @@
                 pickupTime: time,
                 notes,
                 privacyAccepted,
-                items: items.filter(i => i.price >= 0), // esclude riga sconto
+                items: items.filter(i => i.price >= 0), // esclude righe sconto
                 subtotal,
-                discountRate,
+                discountRate: autoDiscountRate,
+                promoCode: appliedPromoCode ? appliedPromoCode.code : null,
+                promoDiscountAmount,
                 total
             };
             localStorage.setItem('torb_order_data', JSON.stringify(orderData));

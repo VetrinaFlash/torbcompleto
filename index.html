@@ -209,11 +209,8 @@
                 Un luogo dove puoi provare il vero sapore della carne selezionata dai <strong>Fratelli de Matteo</strong> e abbinarla ad una vasta selezione di birre artigianali perfette per accompagnare la carne.
             </p>
             
-            <div class="hero-buttons">
-                <a href="menu.html" class="btn-main primary"><i class="fa-solid fa-bag-shopping"></i> Ordina e Ritira</a>
-                <button onclick="openDeliveryModal()" class="btn-main primary"><i class="fa-solid fa-motorcycle"></i> Ordina a Domicilio</button>
-                <a href="https://67ape8dslvci9fpzpmngl8dwcekglxg0.forms.pienissimo.pro/?id=4NuGYl" target="_blank" class="btn-main secondary"><i class="fa-solid fa-calendar-check"></i> Prenota un Tavolo</a>
-                <a href="/torbmenu.pdf" target="_blank" class="btn-main secondary"><i class="fa-solid fa-book-open"></i> Guarda il Menù</a>
+            <div class="hero-buttons" id="hero-buttons-container">
+                <!-- CARICATO DINAMICAMENTE DA /api/homepage -->
             </div>
         </div>
     </section>
@@ -274,9 +271,8 @@
                         📍 Corso Trieste 20, Caserta (81100) <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.8rem; margin-left: 5px;"></i>
                     </a>
                 </p>
-                <div style="border-top: 1px solid var(--border-light); padding-top: 20px;">
-                    <p><strong>Lunedì:</strong> Chiuso</p>
-                    <p><strong>Mar - Dom:</strong> Dalle 19:00</p>
+                <div style="border-top: 1px solid var(--border-light); padding-top: 20px;" id="opening-hours-container">
+                    <!-- CARICATO DINAMICAMENTE DA /api/homepage -->
                 </div>
             </div>
 
@@ -318,6 +314,23 @@
     </footer>
 
     <script>
+        // Mapping di icone per i bottoni comuni
+        const buttonIcons = {
+            'ordina': 'fa-solid fa-bag-shopping',
+            'domicilio': 'fa-solid fa-motorcycle',
+            'tavolo': 'fa-solid fa-calendar-check',
+            'menù': 'fa-solid fa-book-open',
+            'menu': 'fa-solid fa-book-open'
+        };
+
+        function getIconForButton(label) {
+            const labelLower = label.toLowerCase();
+            for (const key in buttonIcons) {
+                if (labelLower.includes(key)) return buttonIcons[key];
+            }
+            return 'fa-solid fa-link';
+        }
+
         function openDeliveryModal() {
             const modal = document.getElementById('delivery-modal');
             modal.style.display = 'flex';
@@ -332,6 +345,119 @@
                 modal.style.display = 'none';
             }, 300);
         }
+
+        // CARICA BOTTONI E ORARI DINAMICAMENTE
+        async function loadHomepageConfig() {
+            try {
+                const res = await fetch('/api/homepage');
+                const data = await res.json();
+
+                if (data && data.buttons && Array.isArray(data.buttons)) {
+                    renderButtons(data.buttons);
+                }
+
+                if (data && data.opening_hours) {
+                    renderOpeningHours(data.opening_hours);
+                }
+            } catch (e) {
+                console.error('Errore caricamento config homepage:', e);
+                renderButtonsFallback();
+                renderOpeningHoursFallback();
+            }
+        }
+
+        function renderButtons(buttons) {
+            const container = document.getElementById('hero-buttons-container');
+            container.innerHTML = '';
+
+            if (!buttons || buttons.length === 0) {
+                renderButtonsFallback();
+                return;
+            }
+
+            buttons.forEach(btn => {
+                const icon = getIconForButton(btn.label);
+                const isExternal = btn.url.startsWith('http') || btn.url.startsWith('//');
+                
+                if (isExternal) {
+                    const a = document.createElement('a');
+                    a.href = btn.url;
+                    a.target = '_blank';
+                    a.className = 'btn-main primary';
+                    a.innerHTML = `<i class="${icon}"></i> ${btn.label}`;
+                    container.appendChild(a);
+                } else if (btn.url.includes('delivery') || btn.url.toLowerCase().includes('domicilio')) {
+                    const button = document.createElement('button');
+                    button.className = 'btn-main primary';
+                    button.onclick = openDeliveryModal;
+                    button.innerHTML = `<i class="${icon}"></i> ${btn.label}`;
+                    container.appendChild(button);
+                } else {
+                    const a = document.createElement('a');
+                    a.href = btn.url;
+                    a.className = 'btn-main secondary';
+                    a.innerHTML = `<i class="${icon}"></i> ${btn.label}`;
+                    container.appendChild(a);
+                }
+            });
+        }
+
+        function renderButtonsFallback() {
+            const container = document.getElementById('hero-buttons-container');
+            container.innerHTML = `
+                <a href="menu.html" class="btn-main primary"><i class="fa-solid fa-bag-shopping"></i> Ordina e Ritira</a>
+                <button onclick="openDeliveryModal()" class="btn-main primary"><i class="fa-solid fa-motorcycle"></i> Ordina a Domicilio</button>
+                <a href="https://67ape8dslvci9fpzpmngl8dwcekglxg0.forms.pienissimo.pro/?id=4NuGYl" target="_blank" class="btn-main secondary"><i class="fa-solid fa-calendar-check"></i> Prenota un Tavolo</a>
+                <a href="/torbmenu.pdf" target="_blank" class="btn-main secondary"><i class="fa-solid fa-book-open"></i> Guarda il Menù</a>
+            `;
+        }
+
+        function renderOpeningHours(hours) {
+            const container = document.getElementById('opening-hours-container');
+            container.innerHTML = '';
+
+            if (!hours || typeof hours !== 'object') {
+                renderOpeningHoursFallback();
+                return;
+            }
+
+            const dayNames = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+            
+            // Mapping: dayNum 1=Lun, 2=Mar, 3=Mer, 4=Gio, 5=Ven, 6=Sab, 7=Dom
+            // Nel DB chiavi: "0"=Dom, "1"=Lun, "2"=Mar, "3"=Mer, "4"=Gio, "5"=Ven, "6"=Sab
+            for (let dayNum = 1; dayNum <= 7; dayNum++) {
+                const dayName = dayNames[dayNum === 7 ? 0 : dayNum]; // dayNum 7 -> index 0 (Domenica)
+                // Usa la giusta chiave dal DB: 7 -> "0", 1 -> "1", 2 -> "2", etc
+                const dbKey = String(dayNum === 7 ? 0 : dayNum);
+                const dayHours = hours[dbKey];
+
+                const p = document.createElement('p');
+                if (!dayHours) {
+                    p.innerHTML = `<strong>${dayName}:</strong> Chiuso`;
+                } else {
+                    const open = dayHours.open ? dayHours.open.substring(0, 5) : '19:00';
+                    const close = dayHours.close ? dayHours.close.substring(0, 5) : '01:00';
+                    p.innerHTML = `<strong>${dayName}:</strong> Dalle ${open} alle ${close}`;
+                }
+                container.appendChild(p);
+            }
+        }
+
+        function renderOpeningHoursFallback() {
+            const container = document.getElementById('opening-hours-container');
+            container.innerHTML = `
+                <p><strong>Lunedì:</strong> Chiuso</p>
+                <p><strong>Martedì:</strong> Dalle 19:00</p>
+                <p><strong>Mercoledì:</strong> Dalle 19:00</p>
+                <p><strong>Giovedì:</strong> Dalle 19:00</p>
+                <p><strong>Venerdì:</strong> Dalle 19:00</p>
+                <p><strong>Sabato:</strong> Dalle 19:00</p>
+                <p><strong>Domenica:</strong> Dalle 19:00</p>
+            `;
+        }
+
+        // Carica al caricamento della pagina
+        document.addEventListener('DOMContentLoaded', loadHomepageConfig);
     </script>
 </body>
 </html>
